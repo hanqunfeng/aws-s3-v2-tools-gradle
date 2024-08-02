@@ -1,5 +1,6 @@
 plugins {
-    id 'io.spring.dependency-management' version '1.0.10.RELEASE'
+//    id 'io.spring.dependency-management' version '1.0.10.RELEASE'
+    id 'io.spring.dependency-management' version '1.1.6'
     //此处必须是java-library，如果是java则api方法不可用，api可以理解为就是compile，支持传递依赖
     id 'java-library'
     //发布插件
@@ -11,7 +12,7 @@ plugins {
 
 group = 'io.github.hanqunfeng'
 //version = '1.0.0-SNAPSHOT'
-version = '1.0.0'
+version = '1.0.1'
 sourceCompatibility = '1.8'
 
 
@@ -133,6 +134,15 @@ javadoc {
     }
 }
 
+// jreleaser配置文件：~/.jreleaser/config.toml
+/*
+JRELEASER_MAVENCENTRAL_USERNAME = "<your-publisher-portal-username>"
+JRELEASER_MAVENCENTRAL_PASSWORD = "<your-publisher-portal-password>"
+JRELEASER_NEXUS2_USERNAME = "<your-sonatype-account-username>"
+JRELEASER_NEXUS2_PASSWORD = "<your-sonatype-account-password>"
+JRELEASER_GPG_PASSPHRASE = "<your-pgp-passphrase>"
+JRELEASER_GITHUB_TOKEN = "<your-github-token"
+ */
 jreleaser {
     signing {
         active = 'ALWAYS'
