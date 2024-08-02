@@ -1,0 +1,169 @@
+plugins {
+    id 'io.spring.dependency-management' version '1.0.10.RELEASE'
+    //此处必须是java-library，如果是java则api方法不可用，api可以理解为就是compile，支持传递依赖
+    id 'java-library'
+    //发布插件
+    id 'maven-publish'
+    //自动发布到maven中央仓库插件
+    //https://jreleaser.org/guide/latest/examples/maven/maven-central.html#_gradle
+    id 'org.jreleaser' version '1.13.1'
+}
+
+group = 'io.github.hanqunfeng'
+//version = '1.0.0-SNAPSHOT'
+version = '1.0.0'
+sourceCompatibility = '1.8'
+
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
+repositories {
+    maven { url 'https://maven.aliyun.com/repository/public/' }
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencyManagement {
+    imports { mavenBom("software.amazon.awssdk:bom:2.23.10") }
+}
+
+dependencies {
+    //lombok
+    compileOnly 'org.projectlombok:lombok:1.18.32'
+    annotationProcessor 'org.projectlombok:lombok:1.18.32'
+    api 'software.amazon.awssdk:s3'
+    api 'software.amazon.awssdk:apache-client'
+    api 'software.amazon.awssdk:s3-transfer-manager'
+    api 'software.amazon.awssdk:aws-crt-client'
+    api 'org.springframework:spring-core:5.3.29'
+
+
+}
+
+// java编译的时候缺省状态下会因为中文字符而失败
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
+
+/**
+ * 发布插件
+ * 参考：https://docs.gradle.org/6.6.1/userguide/publishing_maven.html#publishing_maven:resolved_dependencies
+ *
+ * 发布为bom，参考：https://zhuanlan.zhihu.com/p/195678201
+ * 注意：java-platform不能与java和java-library同时存在
+ */
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = project.group
+            artifactId = project.name
+            version = project.version
+            //如果不定义，则会按照以上默认值执行
+
+            from components.java
+
+            pom {
+                name = 'aws-s3-v2-tools-gradle'
+                description = 'AWS S3 Tools.'
+                url = 'https://blog.hanqunfeng.com'
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'hanqf'
+                        name = 'han qunfeng'
+                        email = 'qunfeng_han@126.com'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:https://github.com/hanqunfeng/aws-s3-v2-tools-gradle.git'
+                    developerConnection = 'scm:git:https://github.com:hanqunfeng/aws-s3-v2-tools-gradle.git'
+                    url = 'https://github.com/hanqunfeng/aws-s3-v2-tools-gradle'
+                }
+            }
+
+            versionMapping {
+                usage('java-api') {
+                    fromResolutionOf('runtimeClasspath')
+                }
+                usage('java-runtime') {
+                    fromResolutionResult()
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            url = layout.buildDirectory.dir('staging-deploy')
+        }
+    }
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+//javadoc，如果用jdk11，默认就支持中文
+//查看可以配置的属性：https://docs.gradle.org/current/javadoc/org/gradle/external/javadoc/StandardJavadocDocletOptions.html
+tasks.withType(Javadoc) {
+    options.version = true
+    options.author = true
+    options.encoding = "UTF-8"
+    options.charSet = "UTF-8"  //解决中文乱码
+}
+
+
+javadoc {
+    if (JavaVersion.current().isJava9Compatible()) {
+        options.addBooleanOption('html5', true)
+    }
+
+    if (JavaVersion.current().isJava8Compatible()) {
+        tasks.withType(Javadoc) {
+            // disable the crazy super-strict doclint tool in Java 8
+            // noinspection SpellCheckingInspection
+            options.addStringOption('Xdoclint:none', '-quiet')
+        }
+    }
+}
+
+jreleaser {
+    signing {
+        active = 'ALWAYS'
+        armored = true
+        mode = 'FILE'
+        publicKey = '/Users/hanqf/develop_soft/gpg_key/hanqf/public.pgp'
+        secretKey = '/Users/hanqf/develop_soft/gpg_key/hanqf/private.pgp'
+    }
+    deploy {
+        maven {
+//            nexus2 {
+//                'maven-central' {
+//                    active = 'ALWAYS'
+//                    url = 'https://s01.oss.sonatype.org/service/local'
+//                    snapshotUrl = 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
+//                    closeRepository = true
+//                    releaseRepository = true
+//                    stagingRepository('build/staging-deploy')
+//                }
+//            }
+
+            /* Portal Publisher API */
+            mavenCentral {
+                sonatype {
+                    active = 'ALWAYS'
+                    url = 'https://central.sonatype.com/api/v1/publisher'
+                    stagingRepository('target/staging-deploy')
+                }
+            }
+
+        }
+    }
+}
+
